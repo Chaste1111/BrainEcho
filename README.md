@@ -2,73 +2,63 @@
 
 Agent 上层个人智能层入口。
 
-## 目标
-
-在 AI Agent（Claude / DeepSeek 等）之上增加一层"用户长期理解层"：
+在 Agent（Claude 等）之上增加一层"用户长期理解层"：
 
 ```
 用户
  ↓
-Brain Echo（入口层）
+brain
  ↓
-Claude Agent / 其他Agent
+用户画像注入
  ↓
-大模型
- ↓
-执行任务
+Claude
 ```
 
-## V0.1
-
-创建一个 `brain` 命令，启动 Claude CLI 并承载未来扩展。
-
-### 验收标准
+## 快速安装
 
 ```bash
-brain
+curl -fsSL https://raw.githubusercontent.com/Chaste1111/BrainEcho/main/install.sh | bash
 ```
 
-输出：
+首次运行 `brain` 将进入初始化流程，回答几个问题后即可开始使用。
 
-```
-Brain Echo starting...
+## 命令
 
-Loading config...
+| 命令 | 作用 |
+|------|------|
+| `brain` | 启动交互式 Claude（自动初始化和注入）|
+| `brain --version / -v` | 显示版本号 |
+| `brain --help / -h` | 显示帮助 |
+| `brain --onboarding` | 强制重新初始化 |
 
-Starting Claude...
-
->
-```
-
-然后进入正常 Claude CLI 交互，`/resume`、`/exit` 等命令全部保留。
+其余参数原样透传 Claude CLI。
 
 ## 项目结构
 
 ```
 BrainEcho/
-├── main.py        ← 入口
-├── config/        ← 配置模块
-├── memory/        ← 记忆模块
+├── main.py                   ← 入口分发
+├── adapter/                  ← Claude CLI 启动封装
+├── context/                  ← 上下文构建（profile → 注入 Claude）
+├── profile/
+│   ├── onboarding/           ← 初始化引擎
+│   │   ├── engine.py         ← 树遍历引擎
+│   │   ├── questions.py      ← 问题树数据
+│   │   ├── schema.py         ← 用户模型定义
+│   │   └── generator.py      ← 答案 → profile 文件
+│   ├── profile.md            ← 用户画像（给 LLM 读）
+│   ├── profile.json          ← 用户画像（程序处理用）
+│   └── changes.json          ← 变化记录（V0.4+）
+├── install.sh                ← 一键安装脚本
 └── README.md
-```
-
-## 安装
-
-```bash
-# 1. 创建软链接
-sudo ln -sf ~/Projects/BrainEcho/main.py /usr/local/bin/brain
-
-# 2. 验证
-brain
 ```
 
 ## 路线图
 
-- **V0.1** — Brain Echo 入口层，启动 Claude CLI（当前）
-- **V0.2** — 配置加载器
-- **V0.3** — 用户记忆管理层
-- **V0.4** — 上下文构建器
-- **V0.5** — 多 Agent 路由层
+- **V0.1** — CLI 入口层（brain → Claude）
+- **V0.2** — Context 层（用户画像注入 Claude）
+- **V0.3** — Onboarding Engine（首次初始化流程 + Memory Schema）
+- **V0.4** — 动态记忆层（计划中）
 
 ## 原则
 

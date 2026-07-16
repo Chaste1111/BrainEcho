@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # Brain Echo — 一键安装脚本
-# 用法: curl -fsSL https://你的仓库地址/install.sh | bash
+# 用法:
+#   curl -fsSL https://raw.githubusercontent.com/Chaste1111/BrainEcho/main/install.sh | bash
 
 set -e
 
 INSTALL_DIR="$HOME/Projects/BrainEcho"
 CLAUDE_PATH="$HOME/.local/bin/brain"
+REPO_URL="https://github.com/Chaste1111/BrainEcho.git"
 
 echo "🧠 Brain Echo 安装中..."
 echo ""
@@ -28,8 +30,7 @@ if [ -d "$INSTALL_DIR" ]; then
     cd "$INSTALL_DIR" && git pull
 else
     echo "→ 下载 BrainEcho..."
-    # 等用户创建仓库后替换 URL
-    git clone https://github.com/你的用户名/BrainEcho.git "$INSTALL_DIR"
+    git clone "$REPO_URL" "$INSTALL_DIR"
 fi
 
 # 4. 创建 brain 命令软链接
