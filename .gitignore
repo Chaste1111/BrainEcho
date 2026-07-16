@@ -1,0 +1,9 @@
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+
+# 用户个人画像（每人独立初始化）
+profile/profile.json
+profile/profile.md
+profile/changes.json
