@@ -22,13 +22,13 @@ CHANGES_JSON = os.path.join(_PROFILE_DIR, "changes.json")
 # ── 章节展示名称映射 ──────────────────────────────────────
 _SECTION_TITLES = {
     "purpose":             "Purpose",
-    "learning_goal":       "Learning Goals",
-    "learning_style":      "Learning Style",
-    "dev_fields":          "Development Focus",
-    "dev_systems":         "Systems Interest",
-    "skill_level":         "Skill Level",
     "long_term_goal":      "Long-term Goals",
+    "skill_level":         "Skill Level",
+    "dev_fields":          "Development Focus",
+    "learning_style":      "Learning Style",
+    "learning_goal":       "Learning Goals",
     "collaboration_style": "Collaboration Style",
+    "time_energy":         "Available Time",
     "active_context":      "Current Context",
 }
 
@@ -37,11 +37,11 @@ _SECTION_ORDER = [
     "purpose",
     "long_term_goal",
     "skill_level",
-    "learning_goal",
-    "learning_style",
     "dev_fields",
-    "dev_systems",
+    "learning_style",
+    "learning_goal",
     "collaboration_style",
+    "time_energy",
     "active_context",
 ]
 
@@ -57,16 +57,15 @@ def generate(answers: dict, questions: list[dict]) -> tuple[str, str]:
     label_map = _build_label_map(questions)
     today = date.today().isoformat()
 
-    # 1. 按 schema 分组（stable / dynamic）
+    # 1. 按 schema 分组
     profile_data = _structure_by_schema(answers, questions, label_map)
 
-    # 2. 生成 JSON（只存 stable + dynamic，raw_answers 不进持久化）
+    # 2. 生成 JSON
     json_data = {
-        "version": "0.3.0",
+        "version": "0.4.0",
         "created": today,
         "updated": today,
-        "stable": profile_data.get("stable", {}),
-        "dynamic": profile_data.get("dynamic", {}),
+        **profile_data,
     }
 
     # 3. 生成 markdown
@@ -106,14 +105,13 @@ def _build_label_map(questions: list[dict]) -> dict[str, str]:
 
 
 def _structure_by_schema(answers: dict, questions: list[dict], label_map: dict) -> dict:
-    """将答案按 schema 分组为 stable / dynamic。
+    """将答案按 schema 分组（identity / state / patterns / policies / evidence）。
 
     不再依赖 question.id 和 schema field 同名的巧合，
     而是读 question.collect 来决定答案写入哪个 schema field。
     """
-    result = {"stable": {}, "dynamic": {}}
-
-    from .schema import category_of
+    from .schema import SCHEMA, category_of
+    result = {cat: {} for cat in SCHEMA}
 
     for q in questions:
         qid = q["id"]
@@ -154,8 +152,12 @@ def _to_markdown(profile_data: dict, today: str) -> str:
     ]
 
     for qid in _SECTION_ORDER:
-        # 从 stable 或 dynamic 中找值
-        value = profile_data.get("stable", {}).get(qid) or profile_data.get("dynamic", {}).get(qid)
+        # 在所有分类中查找值
+        value = None
+        for cat_data in profile_data.values():
+            if qid in cat_data:
+                value = cat_data[qid]
+                break
         if not value:
             continue
 

@@ -1,12 +1,13 @@
 """
-Question Tree — Brain Echo Onboarding Tree v0.1
+Question Tree — Brain Echo Onboarding Tree v0.2（认知模型版）
 
-问题树是纯配置数据，不含执行逻辑。
-引擎（engine.py）负责遍历、渲染、收集。
+设计哲学：
+  不收集"用户标签"，而收集"场景偏好"。
+  每个问题描述一个具体场景，用户的倾向直接对应 Pattern → 推导 Policy。
 
 格式说明：
   id        — 唯一标识，用作答案 key
-  question  — 向用户展示的题目
+  question  — 向用户展示的题目（描述场景）
   type      — single_choice / multi_choice / text
   collect   — [schema_field_id, ...] 标识该问题写入哪些 schema 字段
   options   — [{"id": "...", "label": "..."}]（选择题用）
@@ -28,7 +29,7 @@ QUESTIONS = [
     # ══════════════════════════════════════════════
     {
         "id": "purpose",
-        "question": "你主要希望 AI 帮助你什么？（可多选，输入字母如 ABD）",
+        "question": "你主要希望 AI 帮助你做什么？（可多选，输入字母如 ABD）",
         "type": "multi_choice",
         "collect": ["purpose"],
         "options": [
@@ -40,39 +41,26 @@ QUESTIONS = [
     },
 
     # ══════════════════════════════════════════════
-    # 学习分支
+    # 学习场景（取代原来的 learning_goal + learning_style 两个问题）
+    # 直接问场景偏好 → 推导 teaching_approach policy
     # ══════════════════════════════════════════════
-
-    {
-        "id": "learning_goal",
-        "question": "你使用 AI 学习主要为了？（可多选）",
-        "type": "multi_choice",
-        "collect": ["learning_goal"],
-        "depends": {"purpose": "learning"},
-        "options": [
-            {"id": "quick_grasp",       "label": "快速掌握知识完成任务"},
-            {"id": "deep_understanding", "label": "建立系统理解"},
-            {"id": "project_driven",    "label": "解决实际项目问题"},
-            {"id": "exploration",       "label": "探索未来方向"},
-        ],
-    },
 
     {
         "id": "learning_style",
-        "question": "你更喜欢 AI 如何帮你学习？（可多选）",
+        "question": "当你学习一个新知识时，你希望 AI 怎么帮你？（可多选）",
         "type": "multi_choice",
-        "collect": ["learning_style"],
+        "collect": ["learning_style", "learning_goal"],
         "depends": {"purpose": "learning"},
         "options": [
-            {"id": "direct_answer",   "label": "直接给答案"},
-            {"id": "principle_first", "label": "解释原理后给方案"},
-            {"id": "guide_think",     "label": "通过提问引导我思考"},
-            {"id": "compare_options", "label": "给多个方案比较"},
+            {"id": "principle_first", "label": "先解释背景和原理，再深入细节"},
+            {"id": "project_driven",  "label": "结合一个实际项目边做边学"},
+            {"id": "direct_answer",   "label": "直接给答案，快速上手"},
+            {"id": "compare_options", "label": "给多个方案对比，我自己选"},
         ],
     },
 
     # ══════════════════════════════════════════════
-    # 开发分支
+    # 开发场景
     # ══════════════════════════════════════════════
 
     {
@@ -91,22 +79,6 @@ QUESTIONS = [
     },
 
     {
-        "id": "dev_systems",
-        "question": "你在系统开发方面对哪些方向感兴趣？（可多选）",
-        "type": "multi_choice",
-        "collect": ["dev_systems"],
-        "depends": {"dev_fields": "systems"},
-        "options": [
-            {"id": "linux",        "label": "Linux"},
-            {"id": "networking",   "label": "网络"},
-            {"id": "os",           "label": "操作系统"},
-            {"id": "performance",  "label": "高性能计算"},
-            {"id": "database",     "label": "数据库"},
-            {"id": "compiler",     "label": "编译器"},
-        ],
-    },
-
-    {
         "id": "skill_level",
         "question": "目前你的开发能力更接近？",
         "type": "single_choice",
@@ -117,6 +89,23 @@ QUESTIONS = [
             {"id": "intermediate", "label": "能完成小项目"},
             {"id": "advanced",     "label": "能独立开发完整项目"},
             {"id": "expert",       "label": "能设计复杂系统"},
+        ],
+    },
+
+    # ══════════════════════════════════════════════
+    # 协作场景（所有人）
+    # ══════════════════════════════════════════════
+
+    {
+        "id": "collaboration_style",
+        "question": "遇到一个你不熟悉的问题时，你希望 AI 怎么和你合作？（可多选）",
+        "type": "multi_choice",
+        "collect": ["collaboration_style"],
+        "options": [
+            {"id": "quick_fix",         "label": "直接给我方案，快速解决"},
+            {"id": "teach_method",      "label": "教会我方法和思路"},
+            {"id": "discuss_tradeoffs", "label": "一起分析，讨论方案优劣"},
+            {"id": "challenge",         "label": "挑战我的想法，指出盲点"},
         ],
     },
 
@@ -138,19 +127,19 @@ QUESTIONS = [
     },
 
     # ══════════════════════════════════════════════
-    # 协作方式（所有人）
+    # 时间精力（所有人）- 影响任务规模策略
     # ══════════════════════════════════════════════
 
     {
-        "id": "collaboration_style",
-        "question": "遇到问题时，你希望 AI 如何与你协作？（可多选）",
-        "type": "multi_choice",
-        "collect": ["collaboration_style"],
+        "id": "time_energy",
+        "question": "你目前能投入的时间大概是？",
+        "type": "single_choice",
+        "collect": ["time_energy"],
         "options": [
-            {"id": "quick_fix",       "label": "快速解决"},
-            {"id": "teach_method",    "label": "教会我方法"},
-            {"id": "discuss_tradeoffs", "label": "和我一起分析决策"},
-            {"id": "challenge",       "label": "挑战我的想法"},
+            {"id": "little",    "label": "每天 1 小时以内"},
+            {"id": "moderate",  "label": "每天 1-3 小时"},
+            {"id": "plenty",    "label": "每天 3 小时以上"},
+            {"id": "variable",  "label": "不固定，看情况"},
         ],
     },
 
