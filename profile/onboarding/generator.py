@@ -58,16 +58,15 @@ def generate(answers: dict, questions: list[dict]) -> tuple[str, str]:
     today = date.today().isoformat()
 
     # 1. 按 schema 分组（stable / dynamic）
-    profile_data = _structure_by_schema(answers, label_map)
+    profile_data = _structure_by_schema(answers, questions, label_map)
 
-    # 2. 生成 JSON
+    # 2. 生成 JSON（只存 stable + dynamic，raw_answers 不进持久化）
     json_data = {
         "version": "0.3.0",
         "created": today,
         "updated": today,
         "stable": profile_data.get("stable", {}),
         "dynamic": profile_data.get("dynamic", {}),
-        "raw_answers": answers,
     }
 
     # 3. 生成 markdown
@@ -106,15 +105,21 @@ def _build_label_map(questions: list[dict]) -> dict[str, str]:
 # ── Schema 分组 ─────────────────────────────────────────────
 
 
-def _structure_by_schema(answers: dict, label_map: dict) -> dict:
-    """将答案按 schema 分组为 stable / dynamic。"""
-    # 初始化结构
+def _structure_by_schema(answers: dict, questions: list[dict], label_map: dict) -> dict:
+    """将答案按 schema 分组为 stable / dynamic。
+
+    不再依赖 question.id 和 schema field 同名的巧合，
+    而是读 question.collect 来决定答案写入哪个 schema field。
+    """
     result = {"stable": {}, "dynamic": {}}
 
-    # 从 schema.py 获取字段归属
     from .schema import category_of
 
-    for qid, answer in answers.items():
+    for q in questions:
+        qid = q["id"]
+        if qid not in answers:
+            continue
+        answer = answers[qid]
         if not answer:
             continue
         if isinstance(answer, list) and not answer:
@@ -126,10 +131,12 @@ def _structure_by_schema(answers: dict, label_map: dict) -> dict:
         else:
             value = label_map.get(answer, answer)
 
-        # 根据 schema 决定归属
-        cat = category_of(qid)
-        if cat:
-            result[cat][qid] = value
+        # 读 collect 决定写入哪个 schema field
+        collect = q.get("collect", [qid])  # 兼容无 collect 字段的问题
+        for field_id in collect:
+            cat = category_of(field_id)
+            if cat:
+                result[cat][field_id] = value
 
     return result
 
